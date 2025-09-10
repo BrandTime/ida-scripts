@@ -17,10 +17,10 @@ import idautils
 
 major, minor = map(int, idaapi.get_kernel_version().split("."))
 using_ida7api = (major > 6)
-using_pyqt5 = using_ida7api or (major == 6 and minor >= 9)
 
 idaver_74newer = (major == 7 and minor >= 4)
 idaver_8newer = (major >= 8)
+IDA_9_2_PLUS = (major > 9) or (major == 9 and minor >= 2)
 
 if idaver_74newer or idaver_8newer:
     newer_version_compatible = True
@@ -28,6 +28,13 @@ else:
     newer_version_compatible = False
 
 IDA_9 = (major >= 9)
+
+if IDA_9_2_PLUS:
+    using_pyside6 = True
+    using_pyqt5 = False
+else:
+    using_pyside6 = False
+    using_pyqt5 = using_ida7api or (major == 6 and minor >= 9)
 
 if newer_version_compatible:
     # IDA 7.4+
@@ -46,12 +53,16 @@ else:
     BWN_PSEUDOCODE = idaapi.BWN_PSEUDOCODE
     SETMENU_APP = idaapi.SETMENU_APP
 
-if using_pyqt5:
+if using_pyside6:
+    import PySide6.QtGui as QtGui
+    import PySide6.QtCore as QtCore
+    import PySide6.QtWidgets as QtWidgets
+    from PySide6.QtWidgets import QApplication
+elif using_pyqt5:
     import PyQt5.QtGui as QtGui
     import PyQt5.QtCore as QtCore
     import PyQt5.QtWidgets as QtWidgets
     from PyQt5.Qt import QApplication
-
 else:
     import PySide.QtGui as QtGui
     import PySide.QtCore as QtCore
@@ -63,8 +74,12 @@ else:
 
 def setClipboardText(data):
     cb = QApplication.clipboard()
-    cb.clear(mode=cb.Clipboard)
-    cb.setText(data, mode=cb.Clipboard)
+    if using_pyside6:
+        cb.clear(mode=QtGui.QClipboard.Mode.Clipboard)
+        cb.setText(data, mode=QtGui.QClipboard.Mode.Clipboard)
+    else:
+        cb.clear(mode=cb.Clipboard)
+        cb.setText(data, mode=cb.Clipboard)
 
 
 def PLUGIN_ENTRY():
