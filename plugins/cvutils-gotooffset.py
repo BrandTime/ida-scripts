@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 # IDA Plugin to jump to an offset from the Imagebase.
-# Copy the 'cvutils-getoffset.py' into the plugins directory of IDA
+# Copy the 'cvutils-gotooffset.py' into the plugins directory of IDA
 #------------------------------------------------------------------------------
 
 VERSION = '1.1.0'
@@ -9,8 +9,6 @@ __AUTHOR__ = 'cra0'
 PLUGIN_NAME = "Go To Offset"
 PLUGIN_HOTKEY = "Shift+G"
 
-
-  
 import os
 import sys
 import idc
@@ -18,18 +16,24 @@ import idaapi
 import idautils
 import string
 
-
 major, minor = map(int, idaapi.get_kernel_version().split("."))
 using_ida7api = (major > 6)
-using_pyqt5 = using_ida7api or (major == 6 and minor >= 9)
 
 idaver_74newer = (major == 7 and minor >= 4)
 idaver_8newer = (major >= 8)
+IDA_9_2_PLUS = (major > 9) or (major == 9 and minor >= 2)
 
 if idaver_74newer or idaver_8newer:
     newer_version_compatible = True
 else:
     newer_version_compatible = False
+
+if IDA_9_2_PLUS:
+    using_pyside6 = True
+    using_pyqt5 = False
+else:
+    using_pyside6 = False
+    using_pyqt5 = using_ida7api or (major == 6 and minor >= 9)
 
 if newer_version_compatible:
     #IDA 7.4+
@@ -37,12 +41,16 @@ if newer_version_compatible:
     import ida_ida
     import ida_kernwin
     
-if using_pyqt5:
+if using_pyside6:
+    import PySide6.QtGui as QtGui
+    import PySide6.QtCore as QtCore
+    import PySide6.QtWidgets as QtWidgets
+    from PySide6.QtWidgets import QApplication
+elif using_pyqt5:
     import PyQt5.QtGui as QtGui
     import PyQt5.QtCore as QtCore
     import PyQt5.QtWidgets as QtWidgets
     from PyQt5.Qt import QApplication
-
 else:
     import PySide.QtGui as QtGui
     import PySide.QtCore as QtCore
@@ -50,7 +58,6 @@ else:
     QtCore.pyqtSignal = QtCore.Signal
     QtCore.pyqtSlot = QtCore.Slot
     from PySide.QtGui import QApplication
-    
 
 
 def PLUGIN_ENTRY():
@@ -94,21 +101,17 @@ class cvutils_gotooffset(idaapi.plugin_t):
         This is called by IDA when it is unloading the plugin.
         """
 
-
         # unregister our actions & free their resources
         self._del_action_goto_offset()
 
-
         # done
         idaapi.msg("%s terminated...\n" % self.wanted_name)
-
 
     #--------------------------------------------------------------------------
     # IDA Actions
     #--------------------------------------------------------------------------
 
     ACTION_GET_OFFSET  = "prefix:goto_offset"
-
 
     def _init_action_goto_offset(self):
         """
@@ -136,10 +139,8 @@ class cvutils_gotooffset(idaapi.plugin_t):
                 31                                                      # Copy icon
             )
 
-
         # register the action with IDA
         assert idaapi.register_action(action_desc), "Action registration failed"
-
 
     def _del_action_goto_offset(self):
         """
@@ -164,7 +165,6 @@ def jump_to_address(jump_address):
         ida_kernwin.jumpto(jump_address)
     else:
         idc.Jump(jump_address)
-
 
 #------------------------------------------------------------------------------
 # Image Min EA
@@ -212,7 +212,6 @@ def isvalid_address(ea):
         return 0
     
     return 1
-
 
 #------------------------------------------------------------------------------
 # Go to offset
